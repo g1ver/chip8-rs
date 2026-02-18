@@ -38,6 +38,38 @@ struct Chip8 {
     delay_timer: u8,
 }
 
+impl std::fmt::Display for Chip8 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "=== Chip-8 State ===")?;
+        writeln!(
+            f,
+            "PC: 0x{:04X}  I: 0x{:04X}  SP: 0x{:02X}",
+            self.program_counter, self.index_register, self.stack_pointer
+        )?;
+        writeln!(
+            f,
+            "DT: 0x{:02X}  ST: 0x{:02X}",
+            self.delay_timer, self.sound_timer
+        )?;
+
+        write!(f, "Registers: ")?;
+        for (i, &reg) in self.registers.iter().enumerate() {
+            write!(f, "V{:X}:0x{:02X} ", i, reg)?;
+        }
+        writeln!(f)?;
+
+        writeln!(f, "\nMemory:")?;
+        for (i, chunk) in self.memory.chunks(16).enumerate() {
+            write!(f, "{:04X}: ", i * 16)?;
+            for byte in chunk {
+                write!(f, "{:02X} ", byte)?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
 impl Chip8 {
     fn new() -> Self {
         let mut chip8 = Self {
@@ -72,14 +104,28 @@ impl Chip8 {
             Err(e) => panic!("Error: Could not load ROM.\n{}", e),
         };
 
-        if rom.len() > MEMORY_SIZE - 0x200 {
+        // 0x000 to 0x200 is reserved
+        if rom.len() > (MEMORY_SIZE - 0x200) {
             panic!("Error: ROM is too large.")
         }
 
-        self.memory[0x200..0x200 + rom.len()].copy_from_slice(&rom[..]);
+        self.memory[0x200..(0x200 + rom.len())].copy_from_slice(&rom[..]);
+    }
+
+    // get the current instruction at the program counter location
+    fn fetch(&mut self) -> u16 {
+        let pc = self.program_counter as usize;
+        let hi = self.memory[pc];
+        let lo = self.memory[pc + 1];
+
+        let instruction = (hi as u16) << 8 | (lo as u16);
+        self.program_counter += 2;
+        instruction
     }
 }
 
 fn main() {
-    let chip8 = Chip8::new();
+    let mut chip8 = Chip8::new();
+    chip8.load_rom(String::from("./roms/1-chip8-logo.ch8"));
+    println!("{}", chip8)
 }
