@@ -1,3 +1,5 @@
+use std::fs;
+
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 const MEMORY_SIZE: usize = 4096;
@@ -57,6 +59,24 @@ impl Chip8 {
     fn load_fonts(&mut self) {
         // Community convention is to load fonts into 0x050 to 0x09F
         self.memory[0x050..=0x09F].copy_from_slice(&FONTS[..]);
+    }
+
+    fn load_rom(&mut self, file_path: String) {
+        let rom = fs::read(&file_path);
+
+        let rom = match rom {
+            Ok(rom) => {
+                println!("Loaded ROM from {}", file_path);
+                rom
+            }
+            Err(e) => panic!("Error: Could not load ROM.\n{}", e),
+        };
+
+        if rom.len() > MEMORY_SIZE - 0x200 {
+            panic!("Error: ROM is too large.")
+        }
+
+        self.memory[0x200..0x200 + rom.len()].copy_from_slice(&rom[..]);
     }
 }
 
