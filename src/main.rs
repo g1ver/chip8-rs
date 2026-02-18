@@ -122,6 +122,81 @@ impl Chip8 {
         self.program_counter += 2;
         instruction
     }
+
+    fn decode_exec(&mut self, instruction: u16) {
+        let opcode = ((instruction & 0xF000) >> 12) as u8;
+        let x = ((instruction & 0x0F00) >> 8) as usize;
+        let y = ((instruction & 0x00F0) >> 4) as usize;
+        let n = (instruction & 0x000F) as u8;
+        let kk = (instruction & 0x00FF) as u8;
+        let nnn = (instruction & 0x0FFF) as u16;
+
+        match opcode {
+            0x00 => match kk {
+                0xE0 => {
+                    // 00E0 - CLS
+                    self.frame_buffer.fill(0);
+                }
+                0xEE => {
+                    todo!()
+                }
+                _ => panic!("Error: No instruction found."),
+            },
+            0x1 => {
+                // 1nnn - JP addr
+                self.program_counter = nnn;
+            }
+            0x2 => todo!(),
+            0x3 => todo!(),
+            0x4 => todo!(),
+            0x5 => todo!(),
+            0x6 => {
+                // 6xkk - LD Vx, byte
+                self.registers[x] = kk;
+            }
+            0x7 => todo!(),
+            0x8 => todo!(),
+            0x9 => todo!(),
+            0xA => {
+                // Annn - LD I, addr
+                self.index_register = nnn;
+            }
+            0xB => todo!(),
+            0xC => todo!(),
+            0xD => {
+                // Dxyn - DRW Vx, Vy, nibble
+                let x_coordinate = self.registers[x] % (WIDTH as u8);
+                let y_coordinate = self.registers[y] % (HEIGHT as u8);
+                self.registers[0xF] = 0;
+
+                for row_index in 0..n {
+                    let sprite_byte =
+                        self.memory[(self.index_register as usize) + (row_index as usize)];
+
+                    for col_index in 0..8 {
+                        let sprite_pixel = (sprite_byte >> (7 - col_index)) & 1;
+
+                        let screen_x = x_coordinate as usize + col_index;
+                        let screen_y = y_coordinate as usize + row_index as usize;
+
+                        if screen_x < WIDTH && screen_y < HEIGHT {
+                            if sprite_pixel == 1 {
+                                let screen_idx = screen_y * WIDTH + screen_x;
+                                if self.frame_buffer[screen_idx] == 1 {
+                                    // collison
+                                    self.registers[0xF] = 1;
+                                }
+                                self.frame_buffer[screen_idx] ^= 1;
+                            }
+                        }
+                    }
+                }
+            }
+            0xE => todo!(),
+            0xF => todo!(),
+            _ => panic!("Error: No instruction found."),
+        }
+    }
 }
 
 fn main() {
