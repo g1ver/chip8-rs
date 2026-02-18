@@ -1,9 +1,9 @@
+use minifb::{Key, Window, WindowOptions};
 use std::fs;
 
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 const MEMORY_SIZE: usize = 4096;
-const INSTRUCTIONS_PER_SEC: usize = 700;
 
 const FONTS: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -194,13 +194,69 @@ impl Chip8 {
             }
             0xE => todo!(),
             0xF => todo!(),
-            _ => panic!("Error: No instruction found."),
+            _ => panic!("Unknown opcode: {:#06x}", opcode),
         }
+    }
+
+    fn tick(&mut self) {
+        let instruction = self.fetch();
+        self.decode_exec(instruction);
+    }
+}
+
+fn update_minifb_buffer(chip8_buffer: &[u8; HEIGHT * WIDTH], minifb_buffer: &mut [u32]) {
+    for i in 0..(HEIGHT * WIDTH) {
+        minifb_buffer[i] = if chip8_buffer[i] == 1 {
+            0x33FF33
+        } else {
+            0x000800
+        };
     }
 }
 
 fn main() {
+    let step_debug = true;
+
     let mut chip8 = Chip8::new();
     chip8.load_rom(String::from("./roms/1-chip8-logo.ch8"));
-    println!("{}", chip8)
+    // println!("{}", chip8);
+
+    let mut window = Window::new(
+        "CHIP-8 Emulator",
+        WIDTH,
+        HEIGHT,
+        WindowOptions {
+            scale: minifb::Scale::X16,
+            ..WindowOptions::default()
+        },
+    )
+    .unwrap_or_else(|e| {
+        panic!("{}", e);
+    });
+
+    let mut screen_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+
+    window.set_target_fps(60);
+
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        if step_debug {
+            if window.is_key_pressed(Key::Space, minifb::KeyRepeat::No) {
+                chip8.tick();
+                println!("Stepped to PC: {:#06x}", chip8.program_counter);
+            }
+        } else {
+            // running ~10 cycles per 60Hz frame ~600Hz.
+            for _ in 0..10 {
+                chip8.tick();
+            }
+        }
+
+        // TODO: chip8.update_timers();
+
+        update_minifb_buffer(&chip8.frame_buffer, &mut screen_buffer);
+
+        window
+            .update_with_buffer(&screen_buffer, WIDTH, HEIGHT)
+            .unwrap();
+    }
 }
