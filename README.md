@@ -1,2 +1,2 @@
 # chip8-rs
-CHIP8 emulator written in Rust
+CHIP-8 emulator written in Rust
