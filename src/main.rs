@@ -31,6 +31,7 @@ const FONTS: [u8; 80] = [
 struct Chip8 {
     memory: [u8; MEMORY_SIZE],
     frame_buffer: [u8; WIDTH * HEIGHT],
+    display_buffer: [u8; WIDTH * HEIGHT],
     program_counter: u16,
     index_register: u16,
     stack: [u16; 12],
@@ -81,6 +82,7 @@ impl Chip8 {
         let mut chip8 = Self {
             memory: [0u8; MEMORY_SIZE],
             frame_buffer: [0u8; WIDTH * HEIGHT],
+            display_buffer: [0u8; WIDTH * HEIGHT],
             program_counter: 0x200,
             index_register: 0x0,
             stack: [0u16; 12],
@@ -281,11 +283,18 @@ impl Chip8 {
                         if screen_x < WIDTH && screen_y < HEIGHT {
                             if sprite_pixel == 1 {
                                 let screen_idx = screen_y * WIDTH + screen_x;
+
                                 if self.frame_buffer[screen_idx] == 1 {
-                                    // collison
                                     self.registers[0xF] = 1;
                                 }
+
                                 self.frame_buffer[screen_idx] ^= 1;
+
+                                if self.frame_buffer[screen_idx] == 1 {
+                                    self.display_buffer[screen_idx] = 255;
+                                } else {
+                                    // self.display_buffer[screen_idx] = 0;
+                                }
                             }
                         }
                     }
@@ -391,16 +400,48 @@ impl Chip8 {
             self.sound_timer -= 1;
         }
     }
+
+    fn decay_pixels(&mut self) {
+        for i in 0..(WIDTH * HEIGHT) {
+            if self.frame_buffer[i] == 1 {
+                self.display_buffer[i] = 255;
+            } else {
+                self.display_buffer[i] = self.display_buffer[i].saturating_sub(30);
+            }
+        }
+    }
 }
 
 fn update_minifb_buffer(chip8_buffer: &[u8; HEIGHT * WIDTH], minifb_buffer: &mut [u32]) {
     for i in 0..(HEIGHT * WIDTH) {
-        minifb_buffer[i] = if chip8_buffer[i] == 1 {
-            0xE5CC80
-        } else {
-            0x333333
-        };
+        let brightness = chip8_buffer[i];
+
+        // Interpolate between background (0x333333) and foreground (0xE5CC80)
+        let bg = 0x333333;
+        let fg = 0xE5CC80;
+
+        minifb_buffer[i] = blend_colors(bg, fg, brightness);
     }
+}
+
+fn blend_colors(bg: u32, fg: u32, alpha: u8) -> u32 {
+    let alpha = alpha as u32;
+
+    // Extract RGB components
+    let bg_r = (bg >> 16) & 0xFF;
+    let bg_g = (bg >> 8) & 0xFF;
+    let bg_b = bg & 0xFF;
+
+    let fg_r = (fg >> 16) & 0xFF;
+    let fg_g = (fg >> 8) & 0xFF;
+    let fg_b = fg & 0xFF;
+
+    // Blend: bg + (fg - bg) * (alpha / 255)
+    let r = bg_r + ((fg_r as i32 - bg_r as i32) * alpha as i32 / 255) as u32;
+    let g = bg_g + ((fg_g as i32 - bg_g as i32) * alpha as i32 / 255) as u32;
+    let b = bg_b + ((fg_b as i32 - bg_b as i32) * alpha as i32 / 255) as u32;
+
+    (r << 16) | (g << 8) | b
 }
 
 fn map_minifbkey_to_chip_key(mfbk: minifb::Key) -> Option<u8> {
@@ -441,8 +482,7 @@ fn main() {
     sink.pause();
 
     let mut chip8 = Chip8::new();
-    chip8.load_rom(String::from("./roms/7-beep.ch8"));
-    // println!("{}", chip8);
+    chip8.load_rom(String::from("./roms/tetris.ch8"));
 
     let mut window = Window::new(
         "CHIP-8 Emulator",
@@ -480,6 +520,7 @@ fn main() {
             }
         }
 
+        chip8.decay_pixels();
         chip8.update_timers();
 
         if chip8.sound_timer > 0 {
@@ -488,7 +529,7 @@ fn main() {
             sink.pause();
         }
 
-        update_minifb_buffer(&chip8.frame_buffer, &mut screen_buffer);
+        update_minifb_buffer(&chip8.display_buffer, &mut screen_buffer);
 
         window
             .update_with_buffer(&screen_buffer, WIDTH, HEIGHT)
