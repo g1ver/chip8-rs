@@ -300,9 +300,34 @@ impl Chip8 {
             },
             0xF => {
                 match nn {
+                    0x07 => {
+                        // Fx15 - LD DT, Vx
+                        self.registers[x] = self.delay_timer;
+                    }
+                    0x0A => {
+                        // Fx0A - LD Vx, K
+                        let key = self.keys.iter().position(|k| *k);
+
+                        match key {
+                            Some(k) => self.registers[x] = k as u8,
+                            None => self.program_counter -= 2,
+                        }
+                    }
+                    0x15 => {
+                        // Fx15 - LD DT, Vx
+                        self.delay_timer = self.registers[x];
+                    }
+                    0x18 => {
+                        // Fx18 - LD ST, Vx
+                        self.sound_timer = self.registers[x];
+                    }
                     0x1E => {
                         // Fx1E - ADD I, Vx
                         self.index_register = self.index_register + self.registers[x] as u16;
+                    }
+                    0x29 => {
+                        // Fx29 - LD F, Vx
+                        self.index_register = 0x50 + (self.registers[x] as usize as u16 * 5);
                     }
                     0x33 => {
                         // Fx33 - LD B, Vx
@@ -338,6 +363,16 @@ impl Chip8 {
 
     fn reset_keys(&mut self) {
         self.keys.fill(false);
+    }
+
+    fn update_timers(&mut self) {
+        if self.delay_timer > 0 {
+            self.delay_timer -= 1;
+        }
+
+        if self.sound_timer > 0 {
+            self.sound_timer -= 1;
+        }
     }
 }
 
@@ -414,7 +449,7 @@ fn main() {
             }
         }
 
-        // TODO: chip8.update_timers();
+        chip8.update_timers();
 
         update_minifb_buffer(&chip8.frame_buffer, &mut screen_buffer);
 
