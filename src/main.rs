@@ -37,6 +37,7 @@ struct Chip8 {
     registers: [u8; 16],
     sound_timer: u8,
     delay_timer: u8,
+    keys: [bool; 16],
 }
 
 impl std::fmt::Display for Chip8 {
@@ -83,6 +84,7 @@ impl Chip8 {
             registers: [0u8; 16],
             sound_timer: 0,
             delay_timer: 0,
+            keys: [false; 16],
         };
 
         chip8.load_fonts();
@@ -284,11 +286,15 @@ impl Chip8 {
             0xE => match nn {
                 0x9E => {
                     // Ex9E - SKP Vx
-                    todo!();
+                    if self.keys[self.registers[x] as usize] {
+                        self.program_counter += 2;
+                    }
                 }
                 0xA1 => {
                     // ExA1 - SKNP Vx
-                    todo!();
+                    if !self.keys[self.registers[x] as usize] {
+                        self.program_counter += 2;
+                    }
                 }
                 _ => panic!("Unknown opcode: {:#06x}", opcode),
             },
@@ -329,15 +335,41 @@ impl Chip8 {
         let instruction = self.fetch();
         self.decode_exec(instruction);
     }
+
+    fn reset_keys(&mut self) {
+        self.keys.fill(false);
+    }
 }
 
 fn update_minifb_buffer(chip8_buffer: &[u8; HEIGHT * WIDTH], minifb_buffer: &mut [u32]) {
     for i in 0..(HEIGHT * WIDTH) {
         minifb_buffer[i] = if chip8_buffer[i] == 1 {
-            0x33FF33
+            0xE5CC80
         } else {
-            0x000800
+            0x333333
         };
+    }
+}
+
+fn map_minifbkey_to_chip_key(mfbk: minifb::Key) -> Option<u8> {
+    match mfbk {
+        Key::Key1 => Some(0x1),
+        Key::Key2 => Some(0x2),
+        Key::Key3 => Some(0x3),
+        Key::Key4 => Some(0xC),
+        Key::Q => Some(0x4),
+        Key::W => Some(0x5),
+        Key::E => Some(0x6),
+        Key::R => Some(0xD),
+        Key::A => Some(0x7),
+        Key::S => Some(0x8),
+        Key::D => Some(0x9),
+        Key::F => Some(0xE),
+        Key::Z => Some(0xA),
+        Key::X => Some(0x0),
+        Key::C => Some(0xB),
+        Key::V => Some(0xF),
+        _ => None,
     }
 }
 
@@ -372,6 +404,12 @@ fn main() {
         } else {
             // running ~10 cycles per 60Hz frame ~600Hz.
             for _ in 0..10 {
+                chip8.reset_keys();
+                window.get_keys().iter().for_each(|key| {
+                    if let Some(k) = map_minifbkey_to_chip_key(*key) {
+                        chip8.keys[k as usize] = true;
+                    }
+                });
                 chip8.tick();
             }
         }
