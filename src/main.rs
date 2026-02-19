@@ -34,7 +34,7 @@ struct Chip8 {
     display_buffer: [u8; WIDTH * HEIGHT],
     program_counter: u16,
     index_register: u16,
-    stack: [u16; 12],
+    stack: [u16; 16],
     stack_pointer: u8, // points at next empty slot
     // V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, VA, VB, VC, VD, VE, VF
     // VF is the flag register
@@ -85,7 +85,7 @@ impl Chip8 {
             display_buffer: [0u8; WIDTH * HEIGHT],
             program_counter: 0x200,
             index_register: 0x0,
-            stack: [0u16; 12],
+            stack: [0u16; 16],
             stack_pointer: 0,
             registers: [0u8; 16],
             sound_timer: 0,
@@ -152,7 +152,7 @@ impl Chip8 {
                     self.program_counter = self.stack[self.stack_pointer as usize];
                     self.stack_pointer -= 1;
                 }
-                _ => panic!("Unknown opcode: {:#06x}", opcode),
+                _ => panic!("Unknown instruction: {:#06x}", instruction),
             },
             0x1 => {
                 // 1nnn - JP addr
@@ -233,8 +233,10 @@ impl Chip8 {
                     }
                     7 => {
                         // 8xy7 - SUBN Vx, Vy
-                        self.registers[x] = self.registers[y].wrapping_sub(self.registers[x]);
-                        self.registers[0xF] = (self.registers[x] < self.registers[y]) as u8;
+                        let vx = self.registers[x];
+                        let vy = self.registers[y];
+                        self.registers[x] = vy.wrapping_sub(vx);
+                        self.registers[0xF] = (vx <= vy) as u8;
                     }
                     0xE => {
                         // 8xyE - SHL Vx {, Vy}
@@ -242,11 +244,11 @@ impl Chip8 {
                         self.registers[x] = vx << 1;
                         self.registers[0xF] = ((vx & 0x80) == 0x80) as u8;
                     }
-                    _ => panic!("Unknown opcode: {:#06x}", opcode),
+                    _ => panic!("Unknown instruction: {:#06x}", instruction),
                 }
             }
+            // 9xy0 - SNE Vx, Vy
             0x9 => {
-                // 9xy0 - SNE Vx, Vy
                 if self.registers[x] != self.registers[y] {
                     self.program_counter += 2;
                 }
@@ -313,12 +315,12 @@ impl Chip8 {
                         self.program_counter += 2;
                     }
                 }
-                _ => panic!("Unknown opcode: {:#06x}", opcode),
+                _ => panic!("Unknown instruction: {:#06x}", instruction),
             },
             0xF => {
                 match nn {
                     0x07 => {
-                        // Fx15 - LD DT, Vx
+                        // Fx07 - LD Vx, DT
                         self.registers[x] = self.delay_timer;
                     }
                     0x0A => {
@@ -375,10 +377,11 @@ impl Chip8 {
                             self.registers[i] = self.memory[self.index_register as usize + i];
                         }
                     }
-                    _ => panic!("Unknown opcode: {:#06x}", opcode),
+
+                    _ => panic!("Unknown instruction: {:#06x}", instruction),
                 }
             }
-            _ => panic!("Unknown opcode: {:#06x}", opcode),
+            _ => panic!("Unknown instruction: {:#06x}", instruction),
         }
     }
 
@@ -416,7 +419,6 @@ fn update_minifb_buffer(chip8_buffer: &[u8; HEIGHT * WIDTH], minifb_buffer: &mut
     for i in 0..(HEIGHT * WIDTH) {
         let brightness = chip8_buffer[i];
 
-        // Interpolate between background (0x333333) and foreground (0xE5CC80)
         let bg = 0x333333;
         let fg = 0xE5CC80;
 
