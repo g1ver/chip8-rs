@@ -139,7 +139,9 @@ impl Chip8 {
                     self.frame_buffer.fill(0);
                 }
                 0xEE => {
-                    todo!()
+                    // 00EE - RET
+                    self.program_counter = self.stack[self.stack_pointer as usize];
+                    self.stack_pointer -= 1;
                 }
                 _ => panic!("Unknown opcode: {:#06x}", opcode),
             },
@@ -147,7 +149,12 @@ impl Chip8 {
                 // 1nnn - JP addr
                 self.program_counter = nnn;
             }
-            0x2 => todo!(),
+            0x2 => {
+                // 2nnn - CALL addr
+                self.stack_pointer += 1;
+                self.stack[self.stack_pointer as usize] = self.program_counter;
+                self.program_counter = nnn;
+            }
             0x3 => {
                 // 3xnn - SE Vx, byte
                 if self.registers[x] == nn {
@@ -172,7 +179,7 @@ impl Chip8 {
             }
             0x7 => {
                 // 7xnn - ADD Vx, byte
-                self.registers[x] = self.registers[x] + nn;
+                self.registers[x] = self.registers[x].wrapping_add(nn);
             }
             0x8 => {
                 match n {
@@ -260,7 +267,35 @@ impl Chip8 {
                 }
             }
             0xE => todo!(),
-            0xF => todo!(),
+            0xF => {
+                match nn {
+                    0x1E => {
+                        // Fx1E - ADD I, Vx
+                        self.index_register = self.index_register + self.registers[x] as u16;
+                    }
+                    0x33 => {
+                        // Fx33 - LD B, Vx
+                        let vx = self.registers[x];
+                        let ir = self.index_register as usize;
+                        self.memory[ir] = (vx / 100) % 10;
+                        self.memory[ir + 1] = (vx / 10) % 10;
+                        self.memory[ir + 2] = vx % 10;
+                    }
+                    0x55 => {
+                        // Fx55 - LD [I], Vx
+                        for i in 0..=x {
+                            self.memory[self.index_register as usize + i] = self.registers[i];
+                        }
+                    }
+                    0x65 => {
+                        // Fx65 - LD Vx, [I]
+                        for i in 0..=x {
+                            self.registers[i] = self.memory[self.index_register as usize + i];
+                        }
+                    }
+                    _ => panic!("Unknown opcode: {:#06x}", opcode),
+                }
+            }
             _ => panic!("Unknown opcode: {:#06x}", opcode),
         }
     }
@@ -283,7 +318,7 @@ fn update_minifb_buffer(chip8_buffer: &[u8; HEIGHT * WIDTH], minifb_buffer: &mut
 
 fn main() {
     let mut chip8 = Chip8::new();
-    chip8.load_rom(String::from("./roms/2-ibm-logo.ch8"));
+    chip8.load_rom(String::from("./roms/3-corax+.ch8"));
     // println!("{}", chip8);
 
     let mut window = Window::new(
