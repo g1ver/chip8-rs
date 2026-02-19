@@ -207,24 +207,28 @@ impl Chip8 {
                     }
                     5 => {
                         // 8xy5 - SUB Vx, Vy
-                        self.registers[0xF] = (self.registers[x] > self.registers[y]) as u8;
-                        self.registers[x] = self.registers[x].wrapping_sub(self.registers[y]);
+                        let vx = self.registers[x];
+                        let vy = self.registers[y];
+                        self.registers[x] = vx.wrapping_sub(vy);
+                        self.registers[0xF] = (vx >= vy) as u8;
                     }
                     6 => {
                         // 8xy6 - SHR Vx {, Vy}
                         // Ambiguous instruction - might need to allow for configured behavior
-                        self.registers[0xF] = ((self.registers[x] & 1) == 1) as u8;
-                        self.registers[x] = self.registers[x] >> 1;
+                        let vx = self.registers[x];
+                        self.registers[x] = vx >> 1;
+                        self.registers[0xF] = vx & 1;
                     }
                     7 => {
                         // 8xy7 - SUBN Vx, Vy
-                        self.registers[0xF] = (self.registers[x] < self.registers[y]) as u8;
                         self.registers[x] = self.registers[y].wrapping_sub(self.registers[x]);
+                        self.registers[0xF] = (self.registers[x] < self.registers[y]) as u8;
                     }
                     0xE => {
                         // 8xyE - SHL Vx {, Vy}
-                        self.registers[0xF] = ((self.registers[x] & 0x80) == 0x80) as u8;
-                        self.registers[x] = self.registers[x] << 1;
+                        let vx = self.registers[x];
+                        self.registers[x] = vx << 1;
+                        self.registers[0xF] = ((vx & 0x80) == 0x80) as u8;
                     }
                     _ => panic!("Unknown opcode: {:#06x}", opcode),
                 }
@@ -339,7 +343,7 @@ fn update_minifb_buffer(chip8_buffer: &[u8; HEIGHT * WIDTH], minifb_buffer: &mut
 
 fn main() {
     let mut chip8 = Chip8::new();
-    chip8.load_rom(String::from("./roms/3-corax+.ch8"));
+    chip8.load_rom(String::from("./roms/4-flags.ch8"));
     // println!("{}", chip8);
 
     let mut window = Window::new(
