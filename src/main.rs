@@ -4,6 +4,7 @@ use std::fs;
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 const MEMORY_SIZE: usize = 4096;
+const STEP_DEBUG: bool = false;
 
 const FONTS: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -128,11 +129,11 @@ impl Chip8 {
         let x = ((instruction & 0x0F00) >> 8) as usize;
         let y = ((instruction & 0x00F0) >> 4) as usize;
         let n = (instruction & 0x000F) as u8;
-        let kk = (instruction & 0x00FF) as u8;
+        let nn = (instruction & 0x00FF) as u8;
         let nnn = (instruction & 0x0FFF) as u16;
 
         match opcode {
-            0x00 => match kk {
+            0x00 => match nn {
                 0xE0 => {
                     // 00E0 - CLS
                     self.frame_buffer.fill(0);
@@ -151,8 +152,8 @@ impl Chip8 {
             0x4 => todo!(),
             0x5 => todo!(),
             0x6 => {
-                // 6xkk - LD Vx, byte
-                self.registers[x] = kk;
+                // 6xnn - LD Vx, byte
+                self.registers[x] = nn;
             }
             0x7 => todo!(),
             0x8 => todo!(),
@@ -215,8 +216,6 @@ fn update_minifb_buffer(chip8_buffer: &[u8; HEIGHT * WIDTH], minifb_buffer: &mut
 }
 
 fn main() {
-    let step_debug = true;
-
     let mut chip8 = Chip8::new();
     chip8.load_rom(String::from("./roms/1-chip8-logo.ch8"));
     // println!("{}", chip8);
@@ -239,7 +238,7 @@ fn main() {
     window.set_target_fps(60);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        if step_debug {
+        if STEP_DEBUG {
             if window.is_key_pressed(Key::Space, minifb::KeyRepeat::No) {
                 chip8.tick();
                 println!("Stepped to PC: {:#06x}", chip8.program_counter);
