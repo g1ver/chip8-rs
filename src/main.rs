@@ -155,7 +155,10 @@ impl Chip8 {
                 // 6xnn - LD Vx, byte
                 self.registers[x] = nn;
             }
-            0x7 => todo!(),
+            0x7 => {
+                // 7xkk - ADD Vx, byte
+                self.registers[x] = self.registers[x] + nn;
+            }
             0x8 => todo!(),
             0x9 => todo!(),
             0xA => {
@@ -217,7 +220,7 @@ fn update_minifb_buffer(chip8_buffer: &[u8; HEIGHT * WIDTH], minifb_buffer: &mut
 
 fn main() {
     let mut chip8 = Chip8::new();
-    chip8.load_rom(String::from("./roms/1-chip8-logo.ch8"));
+    chip8.load_rom(String::from("./roms/2-ibm-logo.ch8"));
     // println!("{}", chip8);
 
     let mut window = Window::new(
