@@ -38,6 +38,7 @@ struct Chip8 {
     sound_timer: u8,
     delay_timer: u8,
     keys: [bool; 16],
+    key_waiting: Option<u8>,
 }
 
 impl std::fmt::Display for Chip8 {
@@ -85,6 +86,7 @@ impl Chip8 {
             sound_timer: 0,
             delay_timer: 0,
             keys: [false; 16],
+            key_waiting: None,
         };
 
         chip8.load_fonts();
@@ -309,11 +311,20 @@ impl Chip8 {
                     }
                     0x0A => {
                         // Fx0A - LD Vx, K
-                        let key = self.keys.iter().position(|k| *k);
-
-                        match key {
-                            Some(k) => self.registers[x] = k as u8,
-                            None => self.program_counter -= 2,
+                        if self.key_waiting == None {
+                            if let Some(key) = self.keys.iter().position(|k| *k) {
+                                self.key_waiting = Some(key as u8);
+                            }
+                            self.program_counter -= 2;
+                        } else {
+                            if let Some(key) = self.key_waiting {
+                                if !self.keys[key as usize] {
+                                    self.registers[x] = key;
+                                    self.key_waiting = None;
+                                } else {
+                                    self.program_counter -= 2;
+                                }
+                            }
                         }
                     }
                     0x15 => {
@@ -413,7 +424,7 @@ fn map_minifbkey_to_chip_key(mfbk: minifb::Key) -> Option<u8> {
 
 fn main() {
     let mut chip8 = Chip8::new();
-    chip8.load_rom(String::from("./roms/5-quirks.ch8"));
+    chip8.load_rom(String::from("./roms/6-keypad.ch8"));
     // println!("{}", chip8);
 
     let mut window = Window::new(
