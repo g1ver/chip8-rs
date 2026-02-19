@@ -192,14 +192,17 @@ impl Chip8 {
                     1 => {
                         // 8xy1 - OR Vx, Vy
                         self.registers[x] = self.registers[x] | self.registers[y];
+                        self.registers[0xF] = 0;
                     }
                     2 => {
                         // 8xy2 - AND Vx, Vy
                         self.registers[x] = self.registers[x] & self.registers[y];
+                        self.registers[0xF] = 0;
                     }
                     3 => {
                         // 8xy3 - XOR Vx, Vy
                         self.registers[x] = self.registers[x] ^ self.registers[y];
+                        self.registers[0xF] = 0;
                     }
                     4 => {
                         // 8xy4 - ADD Vx, Vy
@@ -410,7 +413,7 @@ fn map_minifbkey_to_chip_key(mfbk: minifb::Key) -> Option<u8> {
 
 fn main() {
     let mut chip8 = Chip8::new();
-    chip8.load_rom(String::from("./roms/4-flags.ch8"));
+    chip8.load_rom(String::from("./roms/5-quirks.ch8"));
     // println!("{}", chip8);
 
     let mut window = Window::new(
