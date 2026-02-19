@@ -511,13 +511,14 @@ fn main() {
             }
         } else {
             // running ~10 cycles per 60Hz frame ~600Hz.
+            chip8.reset_keys();
+            window.get_keys().iter().for_each(|key| {
+                if let Some(k) = map_minifbkey_to_chip_key(*key) {
+                    chip8.keys[k as usize] = true;
+                }
+            });
+
             for _ in 0..10 {
-                chip8.reset_keys();
-                window.get_keys().iter().for_each(|key| {
-                    if let Some(k) = map_minifbkey_to_chip_key(*key) {
-                        chip8.keys[k as usize] = true;
-                    }
-                });
                 chip8.tick();
             }
         }
