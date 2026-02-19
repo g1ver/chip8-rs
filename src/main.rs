@@ -141,26 +141,79 @@ impl Chip8 {
                 0xEE => {
                     todo!()
                 }
-                _ => panic!("Error: No instruction found."),
+                _ => panic!("Unknown opcode: {:#06x}", opcode),
             },
             0x1 => {
                 // 1nnn - JP addr
                 self.program_counter = nnn;
             }
             0x2 => todo!(),
-            0x3 => todo!(),
-            0x4 => todo!(),
-            0x5 => todo!(),
+            0x3 => {
+                // 3xnn - SE Vx, byte
+                if self.registers[x] == nn {
+                    self.program_counter += 2;
+                }
+            }
+            0x4 => {
+                // 4xnn - SNE Vx, byte
+                if self.registers[x] != nn {
+                    self.program_counter += 2;
+                }
+            }
+            0x5 => {
+                // 5xy0 - SE Vx, Vy
+                if self.registers[x] == self.registers[y] {
+                    self.program_counter += 2;
+                }
+            }
             0x6 => {
                 // 6xnn - LD Vx, byte
                 self.registers[x] = nn;
             }
             0x7 => {
-                // 7xkk - ADD Vx, byte
+                // 7xnn - ADD Vx, byte
                 self.registers[x] = self.registers[x] + nn;
             }
-            0x8 => todo!(),
-            0x9 => todo!(),
+            0x8 => {
+                match n {
+                    1 => {
+                        // 8xy1 - OR Vx, Vy
+                        self.registers[x] = self.registers[x] | self.registers[y];
+                    }
+                    2 => {
+                        // 8xy2 - AND Vx, Vy
+                        self.registers[x] = self.registers[x] & self.registers[y];
+                    }
+                    3 => {
+                        // 8xy3 - XOR Vx, Vy
+                        self.registers[x] = self.registers[x] ^ self.registers[y];
+                    }
+                    4 => {
+                        // 8xy4 - ADD Vx, Vy
+                        let (res, overflow) = self.registers[x].overflowing_add(self.registers[y]);
+                        self.registers[x] = res;
+                        self.registers[0xF] = overflow as u8;
+                    }
+                    5 => {
+                        // 8xy5 - SUB Vx, Vy
+                        self.registers[0xF] = (self.registers[x] > self.registers[y]) as u8;
+                        self.registers[x] = self.registers[x] - self.registers[y];
+                    }
+                    6 => {
+                        // 8xy6 - SHR Vx {, Vy}
+                        // Ambiguous instruction - might need to allow for configured behavior
+                        self.registers[0xF] = ((self.registers[x] & 1) == 1) as u8;
+                        self.registers[x] = self.registers[x] >> 1;
+                    }
+                    _ => panic!("Unknown opcode: {:#06x}", opcode),
+                }
+            }
+            0x9 => {
+                // 9xy0 - SNE Vx, Vy
+                if self.registers[x] != self.registers[y] {
+                    self.program_counter += 2;
+                }
+            }
             0xA => {
                 // Annn - LD I, addr
                 self.index_register = nnn;
