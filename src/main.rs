@@ -239,8 +239,15 @@ impl Chip8 {
                 // Annn - LD I, addr
                 self.index_register = nnn;
             }
-            0xB => todo!(),
-            0xC => todo!(),
+            0xB => {
+                // Bnnn - JP V0, addr
+                self.program_counter = nnn + self.registers[0x0] as u16;
+            }
+            0xC => {
+                // Cxkk - RND Vx, byte
+                let random_n: u8 = rand::random();
+                self.registers[x] = nn & random_n;
+            }
             0xD => {
                 // Dxyn - DRW Vx, Vy, nibble
                 let x_coordinate = self.registers[x] % (WIDTH as u8);
@@ -270,7 +277,17 @@ impl Chip8 {
                     }
                 }
             }
-            0xE => todo!(),
+            0xE => match nn {
+                0x9E => {
+                    // Ex9E - SKP Vx
+                    todo!();
+                }
+                0xA1 => {
+                    // ExA1 - SKNP Vx
+                    todo!();
+                }
+                _ => panic!("Unknown opcode: {:#06x}", opcode),
+            },
             0xF => {
                 match nn {
                     0x1E => {
