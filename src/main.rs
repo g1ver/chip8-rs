@@ -205,6 +205,16 @@ impl Chip8 {
                         self.registers[0xF] = ((self.registers[x] & 1) == 1) as u8;
                         self.registers[x] = self.registers[x] >> 1;
                     }
+                    7 => {
+                        // 8xy7 - SUBN Vx, Vy
+                        self.registers[0xF] = (self.registers[x] < self.registers[y]) as u8;
+                        self.registers[x] = self.registers[y] - self.registers[x];
+                    }
+                    0xE => {
+                        // 8xyE - SHL Vx {, Vy}
+                        self.registers[0xF] = ((self.registers[x] & 0x80) == 0x80) as u8;
+                        self.registers[x] = self.registers[x] << 1;
+                    }
                     _ => panic!("Unknown opcode: {:#06x}", opcode),
                 }
             }
