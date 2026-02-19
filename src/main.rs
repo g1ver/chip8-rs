@@ -183,6 +183,10 @@ impl Chip8 {
             }
             0x8 => {
                 match n {
+                    0 => {
+                        // 8xy0 - LD Vx, Vy
+                        self.registers[x] = self.registers[y];
+                    }
                     1 => {
                         // 8xy1 - OR Vx, Vy
                         self.registers[x] = self.registers[x] | self.registers[y];
@@ -204,7 +208,7 @@ impl Chip8 {
                     5 => {
                         // 8xy5 - SUB Vx, Vy
                         self.registers[0xF] = (self.registers[x] > self.registers[y]) as u8;
-                        self.registers[x] = self.registers[x] - self.registers[y];
+                        self.registers[x] = self.registers[x].wrapping_sub(self.registers[y]);
                     }
                     6 => {
                         // 8xy6 - SHR Vx {, Vy}
@@ -215,7 +219,7 @@ impl Chip8 {
                     7 => {
                         // 8xy7 - SUBN Vx, Vy
                         self.registers[0xF] = (self.registers[x] < self.registers[y]) as u8;
-                        self.registers[x] = self.registers[y] - self.registers[x];
+                        self.registers[x] = self.registers[y].wrapping_sub(self.registers[x]);
                     }
                     0xE => {
                         // 8xyE - SHL Vx {, Vy}
