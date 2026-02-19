@@ -1,5 +1,8 @@
 use minifb::{Key, Window, WindowOptions};
+use rodio::source::SineWave;
+use rodio::{OutputStreamBuilder, Sink, Source};
 use std::fs;
+use std::time::Duration;
 
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
@@ -423,8 +426,22 @@ fn map_minifbkey_to_chip_key(mfbk: minifb::Key) -> Option<u8> {
 }
 
 fn main() {
+    // Set up audio
+    let stream_handle =
+        OutputStreamBuilder::open_default_stream().expect("open default audio stream");
+
+    let sink = Sink::connect_new(&stream_handle.mixer());
+
+    // Create a 440Hz beep
+    let source = SineWave::new(440.0)
+        .take_duration(Duration::from_secs(3600))
+        .amplify(0.20);
+
+    sink.append(source);
+    sink.pause();
+
     let mut chip8 = Chip8::new();
-    chip8.load_rom(String::from("./roms/6-keypad.ch8"));
+    chip8.load_rom(String::from("./roms/7-beep.ch8"));
     // println!("{}", chip8);
 
     let mut window = Window::new(
@@ -464,6 +481,12 @@ fn main() {
         }
 
         chip8.update_timers();
+
+        if chip8.sound_timer > 0 {
+            sink.play();
+        } else {
+            sink.pause();
+        }
 
         update_minifb_buffer(&chip8.frame_buffer, &mut screen_buffer);
 
