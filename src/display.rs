@@ -1,13 +1,58 @@
 use crate::chip8::{HEIGHT, WIDTH};
+use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
 
-pub fn update_minifb_buffer(chip8_buffer: &[u8; HEIGHT * WIDTH], minifb_buffer: &mut [u32]) {
-    for i in 0..(HEIGHT * WIDTH) {
-        let brightness = chip8_buffer[i];
+pub struct Display {
+    window: Window,
+    screen_buffer: Vec<u32>,
+    bg_color: u32,
+    fg_color: u32,
+}
 
-        let fg = 0xE5CC80;
-        let bg = 0x333333;
+impl Display {
+    pub fn new(title: &str, scale: Scale) -> Self {
+        let window = Window::new(
+            title,
+            WIDTH,
+            HEIGHT,
+            WindowOptions {
+                scale,
+                ..WindowOptions::default()
+            },
+        )
+        .unwrap_or_else(|e| panic!("{}", e));
 
-        minifb_buffer[i] = blend_colors(bg, fg, brightness);
+        Self {
+            window,
+            screen_buffer: vec![0u32; WIDTH * HEIGHT],
+            bg_color: 0x333333,
+            fg_color: 0xE5CC80,
+        }
+    }
+
+    pub fn set_target_fps(&mut self, fps: usize) {
+        self.window.set_target_fps(fps);
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.window.is_open() && !self.window.is_key_down(Key::Escape)
+    }
+
+    pub fn is_key_pressed(&self, key: Key) -> bool {
+        self.window.is_key_pressed(key, KeyRepeat::No)
+    }
+
+    pub fn get_keys(&self) -> Vec<Key> {
+        self.window.get_keys()
+    }
+
+    pub fn draw(&mut self, chip8_buffer: &[u8; HEIGHT * WIDTH]) {
+        for i in 0..(HEIGHT * WIDTH) {
+            self.screen_buffer[i] = blend_colors(self.bg_color, self.fg_color, chip8_buffer[i]);
+        }
+
+        self.window
+            .update_with_buffer(&self.screen_buffer, WIDTH, HEIGHT)
+            .unwrap();
     }
 }
 
