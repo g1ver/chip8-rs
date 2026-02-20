@@ -14,20 +14,6 @@ use std::time::Duration;
 const STEP_DEBUG: bool = false;
 
 fn main() {
-    // Set up audio
-    let stream_handle =
-        OutputStreamBuilder::open_default_stream().expect("open default audio stream");
-
-    let sink = Sink::connect_new(&stream_handle.mixer());
-
-    // Create a 440Hz beep
-    let source = SineWave::new(440.0)
-        .take_duration(Duration::from_secs(3600))
-        .amplify(0.20);
-
-    sink.append(source);
-    sink.pause();
-
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
@@ -37,6 +23,20 @@ fn main() {
 
     let rom_path = &args[1];
 
+    // Set up audio
+    let stream_handle =
+        OutputStreamBuilder::open_default_stream().expect("open default audio stream");
+
+    let sink = Sink::connect_new(&stream_handle.mixer());
+
+    let source = SineWave::new(440.0)
+        .take_duration(Duration::from_secs(3600))
+        .amplify(0.20);
+
+    sink.append(source);
+    sink.pause();
+
+    // Setup Emulator
     let mut chip8 = Chip8::new();
     chip8.load_rom(rom_path.clone());
 
